@@ -71,15 +71,17 @@ func main() {
 		os.Exit(1)
 		return
 	}
-
-	fmt.Fprintf(os.Stderr, "fetching %s@%s\n", color.GreenString(req.Source.Repository), color.YellowString(req.Version.Digest))
+	fmt.Fprintf(os.Stderr, "fetching %s@%s from %s\n", color.GreenString(req.Source.Repository), color.YellowString(req.Version.Digest), color.BlueString(n.Context().Registry.String()))
 
 	auth := &authn.Basic{
 		Username: req.Source.Username,
 		Password: req.Source.Password,
 	}
 
-	imageOpts := []remote.ImageOption{
+	// imageOpts := []remote.Option{
+	// 	remote.WithTransport(resource.RetryTransport),
+	// }
+	imageOpts := []remote.Option{
 		remote.WithTransport(resource.RetryTransport),
 	}
 
@@ -93,6 +95,24 @@ func main() {
 		os.Exit(1)
 		return
 	}
+
+	digest, err := image.Digest()
+	if err != nil {
+		logrus.Errorf("failed to get hash: %s", err)
+	}
+	fmt.Fprintf(os.Stderr, "hash: %s\n", digest.Hex)
+
+	layers, err := image.Layers()
+	if err != nil {
+		logrus.Errorf("failed to get layers: %s", err)
+	}
+	fmt.Fprintf(os.Stderr, "number of layers: %d\n", len(layers))
+
+	cfgName, err := image.ConfigName()
+	if err != nil {
+		logrus.Errorf("failed to get cfg name: %s", err)
+	}
+	fmt.Fprintf(os.Stderr, "config name hash: %s\n", cfgName.Hex)
 
 	switch req.Params.Format() {
 	case "oci":
@@ -170,14 +190,16 @@ func rootfsFormat(dest string, req InRequest, image v1.Image) {
 	}
 
 	env := cfg.Config.Env
-	if len(env) == 0 {
-		env = cfg.ContainerConfig.Env
-	}
+	// TOOD: Fix?
+	// if len(env) == 0 {
+	// 	env = cfg.ContainerConfig.Env
+	// }
 
 	user := cfg.Config.User
-	if user == "" {
-		user = cfg.ContainerConfig.User
-	}
+	// TOOD: Fix?
+	// if user == "" {
+	// 	user = cfg.ContainerConfig.User
+	// }
 
 	err = json.NewEncoder(meta).Encode(ImageMetadata{
 		Env:  env,
